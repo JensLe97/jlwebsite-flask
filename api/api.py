@@ -9,7 +9,7 @@ import os
 
 # 0. Activate virtual environment from root directory (api\.venv\Scripts\activate)
 # 1. First, start the backend flask application (npm run start-api)
-# 2. Second, start the react aplication (npm start)
+# 2. Second, start the react application (npm start)
 
 load_dotenv()
 
@@ -27,7 +27,16 @@ app.config['MAIL_MAX_EMAILS'] = 50
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://jenslemke.com",
+            "https://www.jenslemke.com",
+            "https://lemkjens.de",
+            "https://www.lemkjens.de",
+        ]
+    }
+})
 
 @app.route('/api/footer', methods=['GET', 'POST'])
 def footer():
