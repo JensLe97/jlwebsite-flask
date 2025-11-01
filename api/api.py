@@ -6,6 +6,7 @@ from flask_cors import CORS
 
 from dotenv import load_dotenv
 import os
+from threading import Thread
 
 # 0. Activate virtual environment from root directory (api\.venv\Scripts\activate)
 # 1. First, start the backend flask application (npm run start-api)
@@ -54,6 +55,24 @@ def add_cors_headers(response):
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     return response
 
+
+def _send_async_email(app, msg):
+    """Send email in a background thread to avoid blocking the request worker.
+
+    Any exceptions are logged; they won't crash the request worker.
+    """
+    with app.app_context():
+        try:
+            mail.send(msg)
+        except Exception as e:
+            app.logger.exception("Failed to send email: %s", e)
+
+
+def send_email_background(msg):
+    """Start a background thread to send `msg` without blocking the request."""
+    thr = Thread(target=_send_async_email, args=(app, msg), daemon=True)
+    thr.start()
+
 @app.route('/api/footer', methods=['GET', 'POST'])
 def footer():
     if request.method == 'POST':
@@ -61,7 +80,7 @@ def footer():
         msg = Message("Neuer Abonnent",
                 recipients=[os.environ.get('EMAIL')])
         msg.body = "Neuer Abonennt mit E-Mail: " + req
-        mail.send(msg)
+        send_email_background(msg)
         return { 'submission' : 'Success'}
     return { 'submission' : 'No Request'}
 
@@ -72,7 +91,7 @@ def contact():
         msg = Message("Neue Kontaktanfrage",
                 recipients=[os.environ.get('EMAIL')])
         msg.body = "Hi, du hast eine neue Kontaktanfrage mit den folgenden Daten:\n" + req
-        mail.send(msg)
+        send_email_background(msg)
         return { 'submission' : 'Success'}
     return { 'submission' : 'No Request'} # redirect(url_for("contact"))
 
